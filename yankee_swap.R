@@ -1,3 +1,6 @@
+### NEED TO TRACK STRATEGY USED
+
+
 # Yankee Swamp model
 
 # Rules:
@@ -20,6 +23,7 @@
 # 4) Player never steals
 # 5) Player steals if any stealable gift has value (to them) greater than estimated underlying value of average gift
 # 6) Player steals about-to-be unstealable gift if one available greater than estimated underlying value of avg gift
+# 7) Player steals the (N - P/2)th-best gift, where N is number of players and P is draft position.
 
 require(magrittr)
 require(dplyr)
@@ -31,6 +35,49 @@ set.seed(538)
 n.play <- 15 # Number of players
 max.steal <- 3 # Maximum number of times a gift can be stolen
 v <- .1 # Variance in tastes
+
+strat1 <- function(){
+  prob <- nrow(stealable)/available
+  runif(1)<prob
+}
+
+strat5 <- function(){
+  expected <- gifts %>%
+    filter(opened==1) %>%
+    summarize(mean(underlying.value)) %>%
+    as.numeric()
+  if (max(stealable$specific)>expected) TRUE
+  else FALSE
+}
+
+strat6 <- function(){
+  expected <- gifts %>%
+    filter(opened==1) %>%
+    summarize(mean(underlying.value)) %>%
+    as.numeric()
+  locks <- stealable %>%
+    filter(steals==2)
+  if (max(locks$specific)>expected) TRUE
+  else FALSE
+}
+
+will.steal <- function(p){
+  if (p==1) f <- strat1()
+  if (p==2) f <- TRUE
+  if (p==3) f <- TRUE
+  if (p==4) f <- FALSE
+  if (p==5) f <- strat5()
+  if (p==6) f <- strat6()
+  f
+}
+
+chooser <- function(p){
+  if (p==1 | p==2 | p==5) {choice <- stealable$gift.no[which(stealable$specific==max(stealable$specific))]}
+  if (p==3) {choice <-  stealable$gift.no[which(stealable$specific==max(stealable$specific[stealable$specific!=max(stealable$specific)]))]}
+  if (p==6) {locks <- stealable %>% filter(steals==2)
+  choice <- locks$gift.no[which(locks$specific==max(locks$specific))]}
+  choice
+}
 
 result <- data.frame(player.no=1:n.play)
 
@@ -54,22 +101,9 @@ for (games in 1:10){
     names(values)[i+1] <- paste0("player_",i)
   }
   
-  # Steal or open?
-  strat1 <- function(){
-    prob <- stealable/available
-    prob}
-  strat2 <- function(){
-    
-  }
-  
-  will.steal <- function(){
-    prob <- nrow(stealable)/available
-    runif(1)<prob
-  }
-  
   # Game play
   who.has <- data.frame(player.no=1:n.play,gift=NA)
-  game <- data.frame(player.no=1:n.play) # This will track the full game
+  #game <- data.frame(player.no=1:n.play) # This will track the full game
   total.rounds <- 0
   last.stolen <- 0
   
@@ -79,9 +113,14 @@ for (games in 1:10){
     # Internal loop for swapping
     for (j in 1:1000){
       # Starting situation
+      strategy <- players$strategy[which(players$player.no==player)]
+      
       unopened <- gifts %>%
         filter(opened==0) %>%
         select(gift.no)
+      if (nrow(unopened)==0) break
+      
+    
       
       # Need df of stealable gifts, with value to potential stealer attached
       stealable <- values[c(1,player+1)]
@@ -92,11 +131,12 @@ for (games in 1:10){
       
       available <- nrow(stealable)+nrow(unopened)
       
-      steal <- will.steal()
+      if (nrow(stealable)==0) steal <- FALSE
+      else steal <- will.steal(strategy)
       
       if (steal){
         # If player steals
-        choice <- stealable$gift.no[which(stealable$specific==max(stealable$specific))]  # This is the gift they steal
+        choice <- chooser(strategy)  # This is the gift they steal
         last.stolen <- choice # this can't be stolen again
         newplayer <- who.has$player.no[which(who.has$gift==choice)] # player stolen from becomes new player
         who.has$gift[which(who.has$player.no==player)] <- choice # assign gift to stealer
@@ -105,8 +145,8 @@ for (games in 1:10){
         print(paste0("Player ",player," steals gift #",choice," from Player ",newplayer))
         player <- newplayer
         total.rounds <- total.rounds+1
-        game[c(total.rounds+1)] <- who.has$gift
-        names(game)[total.rounds+1] <- paste0("round_",total.rounds)
+        #game[c(total.rounds+1)] <- who.has$gift
+        #names(game)[total.rounds+1] <- paste0("round_",total.rounds)
       }
       else {
         # if player opens
@@ -116,8 +156,8 @@ for (games in 1:10){
         total.rounds <- total.rounds+1
         print(paste0("Player ",player," opens gift #",choice))
         last.stolen <- 0 # new turn, so reset this
-        game[c(total.rounds+1)] <- who.has$gift
-        names(game)[total.rounds+1] <- paste0("round_",total.rounds)
+        #game[c(total.rounds+1)] <- who.has$gift
+        #names(game)[total.rounds+1] <- paste0("round_",total.rounds)
         break # No switching needed
       }
       
