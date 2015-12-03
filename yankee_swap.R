@@ -1,6 +1,7 @@
 # Yankee Swamp model
 
-# Inspired to some degree by this approach by MaxGhenis: https://github.com/analyzestuff/posts/blob/master/white_elephant/white_elephant.R
+# Inspired partly by this approach by Max Ghenis: https://github.com/analyzestuff/posts/blob/master/white_elephant/white_elephant.R
+# Thanks also to Max for his helpful coding edits.
 
 # Rules:
 # 1) N players each bring one gift
@@ -46,8 +47,7 @@ strat5 <- function(){
   expected <- w %>%
     summarize(mean(specific)) %>%
     as.numeric()
-  if (max(stealable$specific)>expected) TRUE
-  else FALSE
+  return(max(stealable$specific) > expected)
 }
 
 strat6 <- function(){
@@ -61,8 +61,7 @@ strat6 <- function(){
     as.numeric()
   locks <- stealable %>%
     filter(steals==max.steals-1)
-  if (max(locks$specific)>expected) TRUE
-  else FALSE
+  return(max(locks$specific) > expected) 
 }
 
 # Strategy 7 based off Ghosh-Mahdian
@@ -91,15 +90,19 @@ will.steal <- function(p){
 
 # Function for selecting which gift to steal.
 # For most strategies, it's just to take highest-value available gift.
-chooser <- function(p){
-  if (p==1 | p==2 | p==5 | p==7) {choice <- stealable$gift.no[which(stealable$specific==max(stealable$specific))]}
-  if (p==3) {choice <-  
-               ifelse(nrow(stealable)>1,
-                      stealable$gift.no[which(stealable$specific==max(stealable$specific[stealable$specific!=max(stealable$specific)]))],
-                      stealable$gift.no[which(stealable$specific==max(stealable$specific))])}
-  if (p==6) {locks <- stealable %>% filter(steals==2)
-             choice <- locks$gift.no[which(locks$specific==max(locks$specific))]}
-  choice
+chooser <- function(p) {
+  # If strategy 3 and more than one stealable gift, get 2nd best gift.
+  if (p == 3 && nrow(stealable) > 1) {
+    return(stealable[order(stealable$specific, decreasing=T), "gift.no"][2])
+  }
+  # If strategy 1, 2, 5, 7, or 3 (and now only one gift), steal best gift.
+  if (p %in% c(1, 2, 5, 7, 3)) {
+    return(stealable[order(stealable$specific, decreasing=T), "gift.no"][1])
+  }
+  if (p == 6) {
+    locks <- stealable %>% filter(steals == 2)
+    return(locks$gift.no[which(locks$specific == max(locks$specific))])
+  }
 }
 
 ################################################################
@@ -113,12 +116,10 @@ chooser <- function(p){
 # Variables
 n.play <- 15 # Number of players
 max.steals <- 3 # Maximum number of times a gift can be stolen
-v <- .1 # Variance in tastes
+v <- .9 # Variance in tastes
 iterations <- 500 # How many times to play?
 extra <- FALSE # Does first person get an extra shot at the end?
 
-
-result <- data.frame(player.no=1:n.play)
 cumulative <- data.frame()
 
 # MEGA LOOP
@@ -172,9 +173,9 @@ for (games in 1:iterations){
       
       available <- nrow(stealable)+nrow(unopened)
       
-      if (nrow(stealable)==0) steal <- FALSE # if there's nothing to steal, then open
+      if (nrow(stealable)==0) {steal <- FALSE} # if there's nothing to steal, then open
       else steal <- will.steal(strategy)  
-          
+      
       if (steal){
         # If player steals
         choice <- chooser(strategy)  # This is the gift they steal
@@ -232,17 +233,16 @@ for (games in 1:iterations){
     }
   }
   
-  # Result we care about is player position and utility
-  result[c(games+1)] <- mapply(function(x)values[who.has$gift[x],x+1],result$player.no)
-  names(result)[games+1] <- paste0("game_",games)
-  who.has$result <- sapply(who.has$player.no,function(x)result[x,c(ncol(result))]) # Find player-specific value
+  # Track results from all games
+  who.has$result <- mapply(function(x)values[who.has$gift[x],x+1],who.has$player.no)
   who.has <- gifts %>%
     select(gift.no,underlying.value) %>%
     left_join(who.has,.,by=c("gift"="gift.no"))
   who.has$game <- games
-  cumulative <- rbind(cumulative,who.has)
+  cumulative <- rbind(cumulative,who.has) # keeps cumulative list of all games and results
   
 }
+
 
 cumulative %>%
   group_by(strategy) %>%
@@ -276,6 +276,8 @@ cumulative %>%
   ggtitle("Value by strategy for late drawers")
 
 # save(cumulative,result,file="initial_results.RData")
+# save(cumulative,result,file="results_10k_iterations.RData")
+
 
 # Some early takeaways:
 # - Never changing is a terrible strategy.
@@ -285,3 +287,5 @@ cumulative %>%
 # - Going later is a big advantage
 # - Allowing more swaps makes the game take forever
 # - Strategy is less important later in the game
+
+regress <- lm(result ~ factor(player.no) * factor(strategy),data=cumulative)
