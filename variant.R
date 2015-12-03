@@ -20,7 +20,7 @@
 # 4) Player never steals
 # 5) Player steals if any stealable gift has value (to them) greater than estimated underlying value of average gift
 # 6) Player steals about-to-be unstealable gift if one available greater than estimated underlying value of avg gift
-# 7) Ghosh-Mahdian: Player steals if best available gift has value > theta
+# 7) Player steals the (N - P/2)th-best gift, where N is number of players and P is draft position.
 
 require(magrittr)
 require(dplyr)
@@ -30,9 +30,9 @@ set.seed(538)
 
 # Variables
 n.play <- 15 # Number of players
-max.steals <- 3 # Maximum number of times a gift can be stolen
+max.steals <- 100 # Maximum number of times a gift can be stolen
 v <- .1 # Variance in tastes
-iterations <- 500 # How many times to play?
+iterations <- 50 # How many times to play?
 extra <- TRUE # Does first person get an extra shot at the end? HAVEN'T CODED THIS YET
 
 strat1 <- function(){
@@ -41,44 +41,24 @@ strat1 <- function(){
 }
 
 strat5 <- function(){
-  w <- values[c(1,player+1)]
-  names(w)[2] <- "specific"
-  w <- gifts %>%
+  expected <- gifts %>%
     filter(opened==1) %>%
-    left_join(w,by=c("gift.no"="gifts"))
-  expected <- w %>%
-    summarize(mean(specific)) %>%
+    summarize(mean(underlying.value)) %>%
     as.numeric()
   if (max(stealable$specific)>expected) TRUE
   else FALSE
 }
 
 strat6 <- function(){
-  w <- values[c(1,player+1)]
-  names(w)[2] <- "specific"
-  w <- gifts %>%
+  expected <- gifts %>%
     filter(opened==1) %>%
-    left_join(w,by=c("gift.no"="gifts"))
-  expected <- w %>%
-    summarize(mean(specific)) %>%
+    summarize(mean(underlying.value)) %>%
     as.numeric()
   locks <- stealable %>%
     filter(steals==max.steals-1)
   if (max(locks$specific)>expected) TRUE
   else FALSE
 }
-
-# Strategy 7 based off Ghosh-Mahdian
-theta <- data.frame(player.no=n.play:1)
-theta$theta[1] <- 0.5
-for (x in 1:(n.play-1)){
-  theta$theta[x+1] <- theta$theta[x]-((theta$theta[x])^2)/2}
-
-strat7 <- function(){
-  if (max(stealable$specific)>=theta$theta[which(theta$player.no==player)]) TRUE
-  else FALSE
-}
-
 
 will.steal <- function(p){
   if (p==1) f <- strat1()
@@ -87,23 +67,22 @@ will.steal <- function(p){
   if (p==4) f <- FALSE
   if (p==5) f <- strat5()
   if (p==6) f <- strat6()
-  if (p==7) f <- strat7()
   f
 }
 
 chooser <- function(p){
-  if (p==1 | p==2 | p==5 | p==7) {choice <- stealable$gift.no[which(stealable$specific==max(stealable$specific))]}
+  if (p==1 | p==2 | p==5) {choice <- stealable$gift.no[which(stealable$specific==max(stealable$specific))]}
   if (p==3) {choice <-  
                ifelse(nrow(stealable)>1,
                       stealable$gift.no[which(stealable$specific==max(stealable$specific[stealable$specific!=max(stealable$specific)]))],
                       stealable$gift.no[which(stealable$specific==max(stealable$specific))])}
   if (p==6) {locks <- stealable %>% filter(steals==2)
-  choice <- locks$gift.no[which(locks$specific==max(locks$specific))]}
+             choice <- locks$gift.no[which(locks$specific==max(locks$specific))]}
   choice
 }
 
-result <- data.frame(player.no=1:n.play)
-cumulative <- data.frame()
+result_v2 <- data.frame(player.no=1:n.play)
+cumulative_v2 <- data.frame()
 
 # MEGA LOOP
 # This loop runs multiple games.
@@ -117,7 +96,7 @@ for (games in 1:iterations){
   
   # Set up players
   # Each player has a strategy, chosen at random
-  players <- data.frame(player.no=1:n.play,strategy=rep(sample(1:7,n.play,replace=T)))
+  players <- data.frame(player.no=1:n.play,strategy=rep(sample(1:6,n.play,replace=T)))
   
   # Set up matrix of player-specific gift values
   values <- data.frame(gifts=1:n.play)
@@ -145,7 +124,9 @@ for (games in 1:iterations){
         filter(opened==0) %>%
         select(gift.no)
       if (nrow(unopened)==0) break
-        
+      
+      
+      
       # Need df of stealable gifts, with value to potential stealer attached
       stealable <- values[c(1,player+1)]
       names(stealable)[2] <- "specific"
@@ -188,51 +169,21 @@ for (games in 1:iterations){
     }
   }
   
-  # Result we care about is player position and utility
-  result[c(games+1)] <- mapply(function(x)values[who.has$gift[x],x+1],result$player.no)
-  names(result)[games+1] <- paste0("game_",games)
-  who.has$result <- sapply(who.has$player.no,function(x)result[x,c(ncol(result))])
+  # result_v2 we care about is player position and utility
+  result_v2[c(games+1)] <- mapply(function(x)values[who.has$gift[x],x+1],result_v2$player.no)
+  names(result_v2)[games+1] <- paste0("game_",games)
+  who.has$result_v2 <- sapply(who.has$player.no,function(x)result_v2[x,c(ncol(result_v2))])
   who.has$game <- games
-  cumulative <- rbind(cumulative,who.has)
+  cumulative_v2 <- rbind(cumulative_v2,who.has)
 }
 
-cumulative %>%
-  group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
-  ggtitle("Value by Strategy")
 
-cumulative %>%
+cumulative_v2 %>%
+  group_by(strategy) %>%
+  summarize(score=mean(result_v2)) %>%
+  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")
+
+cumulative_v2 %>%
   group_by(player.no) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(player.no,score))+geom_line()+
-  ggtitle("Value by order of draw")
-
-cumulative %>%
-  filter(player.no<6) %>%
-  group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
-  ggtitle("Value by strategy for early drawers")
-cumulative %>%
-  filter(player.no>=6,player.no<11) %>%
-  group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
-  ggtitle("Value by strategy for middle drawers")
-cumulative %>%
-  filter(player.no>=11) %>%
-  group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
-  ggtitle("Value by strategy for late drawers")
-
-
-# Some early takeaways:
-# - Never changing is a terrible strategy.
-# - So, somewhat surprisingly, is the "take the second best" strategy
-# - Best strategy is to take best available, if it's bestter that expected value of pile
-# - Changing variance of preferences affects shape but not overall takeaway
-# - Going later is a big advantage
-# - Allowing more swaps makes the game take forever
-# - Strategy is less important later in the game
+  summarize(score=mean(result_v2)) %>%
+  ggplot(.,aes(player.no,score))+geom_line()
