@@ -1,6 +1,3 @@
-### NEED TO TRACK STRATEGY USED
-
-
 # Yankee Swamp model
 
 # Rules:
@@ -73,19 +70,23 @@ will.steal <- function(p){
 
 chooser <- function(p){
   if (p==1 | p==2 | p==5) {choice <- stealable$gift.no[which(stealable$specific==max(stealable$specific))]}
-  if (p==3) {choice <-  stealable$gift.no[which(stealable$specific==max(stealable$specific[stealable$specific!=max(stealable$specific)]))]}
+  if (p==3) {choice <-  
+               ifelse(nrow(stealable)>1,
+                      stealable$gift.no[which(stealable$specific==max(stealable$specific[stealable$specific!=max(stealable$specific)]))],
+                      stealable$gift.no[which(stealable$specific==max(stealable$specific))])}
   if (p==6) {locks <- stealable %>% filter(steals==2)
   choice <- locks$gift.no[which(locks$specific==max(locks$specific))]}
   choice
 }
 
 result <- data.frame(player.no=1:n.play)
+cumulative <- data.frame()
 
 # MEGA LOOP
 # This loop runs multiple games.
 # Only thing that stays constant is the baseline rules.
 
-for (games in 1:10){
+for (games in 1:5){
   
   # Set up gifts
   gifts <- data.frame(gift.no = 1:n.play,steals=rep(0,times=n.play),opened=rep(0,times=n.play),underlying.value=runif(n.play))
@@ -102,7 +103,8 @@ for (games in 1:10){
   }
   
   # Game play
-  who.has <- data.frame(player.no=1:n.play,gift=NA)
+  who.has <- players
+  who.has$gift <- NA
   #game <- data.frame(player.no=1:n.play) # This will track the full game
   total.rounds <- 0
   last.stolen <- 0
@@ -167,8 +169,16 @@ for (games in 1:10){
   # Result we care about is player position and utility
   result[c(games+1)] <- mapply(function(x)values[who.has$gift[x],x+1],result$player.no)
   names(result)[games+1] <- paste0("game_",games)
+  who.has$result <- sapply(who.has$player.no,function(x)result[x,c(ncol(result))])
+  who.has$game <- games
+  cumulative <- rbind(cumulative,who.has)
 }
 
 result %>%
   gather(game,value,-player.no) %>%
   ggplot(.,aes(player.no,value,colour=game))+geom_line()
+
+cumulative %>%
+  group_by(strategy) %>%
+  summarize(score=mean(result)) %>%
+  ggplot(.,aes(strategy,score))+geom_line()
