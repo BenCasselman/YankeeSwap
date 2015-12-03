@@ -98,7 +98,7 @@ chooser <- function(p){
                       stealable$gift.no[which(stealable$specific==max(stealable$specific[stealable$specific!=max(stealable$specific)]))],
                       stealable$gift.no[which(stealable$specific==max(stealable$specific))])}
   if (p==6) {locks <- stealable %>% filter(steals==2)
-  choice <- locks$gift.no[which(locks$specific==max(locks$specific))]}
+             choice <- locks$gift.no[which(locks$specific==max(locks$specific))]}
   choice
 }
 
@@ -145,7 +145,7 @@ for (games in 1:iterations){
         filter(opened==0) %>%
         select(gift.no)
       if (nrow(unopened)==0) break
-        
+      
       # Need df of stealable gifts, with value to potential stealer attached
       stealable <- values[c(1,player+1)]
       names(stealable)[2] <- "specific"
