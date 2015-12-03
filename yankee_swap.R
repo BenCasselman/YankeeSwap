@@ -6,8 +6,8 @@
 # 1) N players each bring one gift
 # 2) Each round, a player can choose to pick a new gift or steal someone else's gift
 # 3) If a person steals a gift, the steal-ee makes the same choice
-# 4) Gifts can not be stolen more than three times each
-# 5) Gifts cannot be stolen more than once per round
+# 4) Gifts can not be stolen more than a fixed number of times each
+# 5) Players can't "steal back" a gift that was just stolen
 #
 # Assumptions:
 # 1) Gifts have an underlying value that is the same for all players (but not known to them)
@@ -114,7 +114,7 @@ chooser <- function(p){
 n.play <- 15 # Number of players
 max.steals <- 3 # Maximum number of times a gift can be stolen
 v <- .1 # Variance in tastes
-iterations <- 5 # How many times to play?
+iterations <- 500 # How many times to play?
 extra <- FALSE # Does first person get an extra shot at the end?
 
 
@@ -226,7 +226,7 @@ for (games in 1:iterations){
       
       # Still add to these counts for tracking purposes
       gifts$steals[which(gifts$gift.no==choice)] <- gifts$steals[which(gifts$gift.no==choice)] +1 # add to number of times gift has been stolen
-      print(paste0("Player ",player,", following strategy #",strategy,", steals gift #",choice," from Player ",newplayer))
+      print(paste0("Player 1 steals gift #",choice," from Player ",newplayer,". Player ",newplayer," gets gift #",swap," in return."))
       total.rounds <- total.rounds+1
       
     }
