@@ -1,8 +1,11 @@
 # Yankee Swamp model
-
+#
+# What is the best strategy for a Yankee Swap (also known as a white elephant exchange)
+# Analysis conducted for FiveThirtyEight
+#
 # Inspired partly by this approach by Max Ghenis: https://github.com/analyzestuff/posts/blob/master/white_elephant/white_elephant.R
 # Thanks also to Max for his helpful coding edits.
-
+#
 # Rules:
 # 1) N players each bring one gift
 # 2) Each round, a player can choose to pick a new gift or steal someone else's gift
@@ -23,7 +26,10 @@
 # 4) Player never steals
 # 5) Player steals if any stealable gift has value (to them) greater than estimated underlying value of average gift
 # 6) Player steals about-to-be unstealable gift if one available greater than estimated underlying value of avg gift
-# 7) Ghosh-Mahdian: Player steals if best available gift has value > theta
+# 7) Same as #5 but factor in knowledge of gift player brought.
+# 8) Ghosh-Mahdian: Player steals if best available gift has value > theta
+
+
 
 require(magrittr)
 require(dplyr)
@@ -64,28 +70,42 @@ strat6 <- function(){
   return(max(locks$specific) > expected) 
 }
 
-# Strategy 7 based off Ghosh-Mahdian
+strat7 <- function(){
+  w <- values[c(1,player+1)]
+  names(w)[2] <- "specific"
+  w <- gifts %>%
+    filter(opened==1 | brought==player) %>%
+    left_join(w,by=c("gift.no"="gifts"))
+  expected <- w %>%
+    summarize(mean(specific)) %>%
+    as.numeric()
+  return(max(stealable$specific) > expected)
+}
+
+# Strategy 8 based off Ghosh-Mahdian
 # Paper: http://www.arpitaghosh.com/papers/gift1.pdf
 theta <- data.frame(player.no=n.play:1)
 theta$theta[1] <- 0.5
 for (x in 1:(n.play-1)){
   theta$theta[x+1] <- theta$theta[x]-((theta$theta[x])^2)/2}
 
-strat7 <- function(){
+strat8 <- function(){
   if (max(stealable$specific)>=theta$theta[which(theta$player.no==player)]) TRUE
   else FALSE
 }
 
 
-will.steal <- function(p){
-  if (p==1) f <- strat1()
-  if (p==2) f <- TRUE
-  if (p==3) f <- TRUE
-  if (p==4) f <- FALSE
-  if (p==5) f <- strat5()
-  if (p==6) f <- strat6()
-  if (p==7) f <- strat7()
-  f
+will.steal <- function(p) {
+  return(switch(p,
+                strat1(),  # 1
+                TRUE,  # 2
+                TRUE,  # 3
+                FALSE,  # 4
+                strat5(),  # 5
+                strat6(),  # 6
+                strat7(),  # 7
+                strat8() # 8
+  ))
 }
 
 # Function for selecting which gift to steal.
@@ -96,7 +116,7 @@ chooser <- function(p) {
     return(stealable[order(stealable$specific, decreasing=T), "gift.no"][2])
   }
   # If strategy 1, 2, 5, 7, or 3 (and now only one gift), steal best gift.
-  if (p %in% c(1, 2, 5, 7, 3)) {
+  if (p %in% c(1, 2, 5, 7,8, 3)) {
     return(stealable[order(stealable$specific, decreasing=T), "gift.no"][1])
   }
   if (p == 6) {
@@ -117,7 +137,7 @@ chooser <- function(p) {
 n.play <- 15 # Number of players
 max.steals <- 3 # Maximum number of times a gift can be stolen
 v <- .9 # Variance in tastes
-iterations <- 500 # How many times to play?
+iterations <- 10000 # How many times to play?
 extra <- FALSE # Does first person get an extra shot at the end?
 
 cumulative <- data.frame()
@@ -129,12 +149,12 @@ cumulative <- data.frame()
 for (games in 1:iterations){
   print(paste0("GAME ",games))
   
-  # Set up gifts
-  gifts <- data.frame(gift.no = 1:n.play,steals=rep(0,times=n.play),opened=rep(0,times=n.play),underlying.value=runif(n.play))
+  # Set up gifts. Also assign who brought which gift, for Strategy #7
+  gifts <- data.frame(gift.no = 1:n.play,brought=sample(1:n.play,replace=F),steals=rep(0,times=n.play),opened=rep(0,times=n.play),underlying.value=runif(n.play))
   
   # Set up players
-  # Each player has a strategy, chosen at random
-  players <- data.frame(player.no=1:n.play,strategy=rep(sample(1:7,n.play,replace=T)))
+  # Each player has a strategy, chosen at random. 
+  players <- data.frame(player.no=1:n.play,strategy=rep(sample(1:8,n.play,replace=T)))
   
   # Set up matrix of player-specific gift values
   values <- data.frame(gifts=1:n.play)
@@ -248,35 +268,35 @@ cumulative %>%
   group_by(strategy) %>%
   summarize(score=mean(result)) %>%
   ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
-  ggtitle("Value by Strategy")
+  ggtitle("Value by Strategy") + xlab("Strategy") + ylab("Score")
 
 cumulative %>%
   group_by(player.no) %>%
   summarize(score=mean(result)) %>%
   ggplot(.,aes(player.no,score))+geom_line()+
-  ggtitle("Value by order of draw")
+  ggtitle("Value by order of draw") + xlab("Player position") + ylab("Score")
 
 cumulative %>%
   filter(player.no<6) %>%
   group_by(strategy) %>%
   summarize(score=mean(result)) %>%
   ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
-  ggtitle("Value by strategy for early drawers")
+  ggtitle("Value by strategy for early drawers") + xlab("Strategy") + ylab("Score")
 cumulative %>%
   filter(player.no>=6,player.no<11) %>%
   group_by(strategy) %>%
   summarize(score=mean(result)) %>%
   ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
-  ggtitle("Value by strategy for middle drawers")
+  ggtitle("Value by strategy for middle drawers") + xlab("Strategy") + ylab("Score")
 cumulative %>%
   filter(player.no>=11) %>%
   group_by(strategy) %>%
   summarize(score=mean(result)) %>%
   ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
-  ggtitle("Value by strategy for late drawers")
+  ggtitle("Value by strategy for late drawers") + xlab("Strategy") + ylab("Score")
 
 # save(cumulative,result,file="initial_results.RData")
-# save(cumulative,result,file="results_10k_iterations.RData")
+save(cumulative,result,file="results_10k_iterations.RData")
 
 
 # Some early takeaways:
@@ -288,4 +308,10 @@ cumulative %>%
 # - Allowing more swaps makes the game take forever
 # - Strategy is less important later in the game
 
+# More formal analysis
+regress <- lm(result ~ player.no + factor(strategy),data=cumulative)
+summary(regress)
+
+# Add interaction term
 regress <- lm(result ~ factor(player.no) * factor(strategy),data=cumulative)
+summary(regress)

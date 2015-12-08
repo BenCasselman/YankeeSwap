@@ -23,7 +23,8 @@
 # 4) Player never steals
 # 5) Player steals if any stealable gift has value (to them) greater than estimated underlying value of average gift
 # 6) Player steals about-to-be unstealable gift if one available greater than estimated underlying value of avg gift
-# 7) Ghosh-Mahdian: Player steals if best available gift has value > theta
+# 7) Same as #5 but factor in knowledge of gift player brought.
+# 8) Ghosh-Mahdian: Player steals if best available gift has value > theta
 
 require(magrittr)
 require(dplyr)
@@ -31,7 +32,7 @@ require(tidyr)
 require(ggplot2)
 set.seed(538)
 
-# INITIAL SETUP OF FUNCTIONS
+# INITIAL SETUP OF FUNCTIONS -- All identical to standard approach.
 
 strat1 <- function(){
   prob <- nrow(stealable)/available
@@ -47,8 +48,7 @@ strat5 <- function(){
   expected <- w %>%
     summarize(mean(specific)) %>%
     as.numeric()
-  if (max(stealable$specific)>expected) TRUE
-  else FALSE
+  return(max(stealable$specific) > expected)
 }
 
 strat6 <- function(){
@@ -62,49 +62,45 @@ strat6 <- function(){
     as.numeric()
   locks <- stealable %>%
     filter(steals==max.steals-1)
-  if (max(locks$specific)>expected) TRUE
-  else FALSE
+  return(max(locks$specific) > expected) 
 }
 
-# Strategy 7 based off Ghosh-Mahdian
+strat7 <- function(){
+  w <- values[c(1,player+1)]
+  names(w)[2] <- "specific"
+  w <- gifts %>%
+    filter(opened==1 | brought==player) %>%
+    left_join(w,by=c("gift.no"="gifts"))
+  expected <- w %>%
+    summarize(mean(specific)) %>%
+    as.numeric()
+  return(max(stealable$specific) > expected)
+}
+
+# Strategy 8 based off Ghosh-Mahdian
 # Paper: http://www.arpitaghosh.com/papers/gift1.pdf
 theta <- data.frame(player.no=n.play:1)
 theta$theta[1] <- 0.5
 for (x in 1:(n.play-1)){
   theta$theta[x+1] <- theta$theta[x]-((theta$theta[x])^2)/2}
 
-strat7 <- function(){
+strat8 <- function(){
   if (max(stealable$specific)>=theta$theta[which(theta$player.no==player)]) TRUE
   else FALSE
 }
 
 
-will.steal <- function(p){
-  if (p==1) f <- strat1()
-  if (p==2) f <- TRUE
-  if (p==3) f <- TRUE
-  if (p==4) f <- FALSE
-  if (p==5) f <- strat5()
-  if (p==6) f <- strat6()
-  if (p==7) f <- strat7()
-  f
-}
-
-# Function for selecting which gift to steal.
-# For most strategies, it's just to take highest-value available gift.
-chooser <- function(p) {
-  # If strategy 3 and more than one stealable gift, get 2nd best gift.
-  if (p == 3 && nrow(stealable) > 1) {
-    return(stealable[order(stealable$specific, decreasing=T), "gift.no"][2])
-  }
-  # If strategy 1, 2, 5, 7, or 3 (and now only one gift), steal best gift.
-  if (p %in% c(1, 2, 5, 7, 3)) {
-    return(stealable[order(stealable$specific, decreasing=T), "gift.no"][1])
-  }
-  if (p == 6) {
-    locks <- stealable %>% filter(steals == 2)
-    return(locks$gift.no[which(locks$specific == max(locks$specific))])
-  }
+will.steal <- function(p) {
+  return(switch(p,
+                strat1(),  # 1
+                TRUE,  # 2
+                TRUE,  # 3
+                FALSE,  # 4
+                strat5(),  # 5
+                strat6(),  # 6
+                strat7(),  # 7
+                strat8() # 8
+  ))
 }
 
 ################################################################
@@ -119,7 +115,7 @@ chooser <- function(p) {
 n.play <- 15 # Number of players
 max.steals <- 3 # Maximum number of times a gift can be stolen
 v <- .1 # Variance in tastes
-iterations <- 1 # How many times to play?
+iterations <- 500 # How many times to play?
 extra <- FALSE # Does first person get an extra shot at the end?
 
 
@@ -134,7 +130,7 @@ for (games in 1:iterations){
   print(paste0("GAME ",games))
   
   # Set up gifts
-  gifts <- data.frame(gift.no = 1:n.play,steals=rep(0,times=n.play),opened=rep(0,times=n.play),underlying.value=runif(n.play))
+  gifts <- data.frame(gift.no = 1:n.play,brought=sample(1:n.play,replace=F),steals=rep(0,times=n.play),opened=rep(0,times=n.play),underlying.value=runif(n.play))
   
   # Set up players
   # Each player has a strategy, chosen at random
@@ -295,11 +291,4 @@ cumulative_v2 %>%
 
 # save(cumulative_v2,result_v2,file="initial_result_v2s.RData")
 
-# Some early takeaways:
-# - Never changing is a terrible strategy.
-# - So, somewhat surprisingly, is the "take the second best" strategy
-# - Best strategy is to take best available, if it's bestter that expected value of pile
-# - Changing variance of preferences affects shape but not overall takeaway
-# - Going later is a big advantage
-# - Allowing more swaps makes the game take forever
-# - Strategy is less important later in the game
+summary(lm(result ~ factor(strategy) + player.no,data=cumulative_v2))
