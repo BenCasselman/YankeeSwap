@@ -1,5 +1,5 @@
 ---
-output: html_document
+output: md_document
 ---
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
@@ -86,7 +86,7 @@ A few clear takeaways quickly emerge. (Charts are based on 10,000 iterations usi
 ##### Player order
 There is a big advantage to going later, and a particularly large advantage to going last. (Going first also seems to be slightly better than going second.)
 
-<img src="README-unnamed-chunk-13-1.png" title="" alt="" width="672" />
+![plot of chunk unnamed-chunk-4](README-unnamed-chunk-4-1.png) 
 
 ##### Strategy
 Strategy matters! Specifically:
@@ -97,7 +97,7 @@ Strategy matters! Specifically:
 - The simple "always steal" does surprisingly well;
 - There is little difference in outcome between models 5 and 7.
 
-<img src="README-unnamed-chunk-14-1.png" title="" alt="" width="672" />
+![plot of chunk unnamed-chunk-5](README-unnamed-chunk-5-1.png) 
 
 We can see this using a regression analysis, controlling for player order:
 
@@ -133,7 +133,7 @@ summary(regress)
 
 Strategy is less important earlier in the game. Here are the same strategy-payoff charts for early (players 1-5), middle (6-10) and late (11-15) players.
 
-<img src="README-unnamed-chunk-16-1.png" title="" alt="" width="672" /><img src="README-unnamed-chunk-16-2.png" title="" alt="" width="672" /><img src="README-unnamed-chunk-16-3.png" title="" alt="" width="672" />
+![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-1.png) ![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-2.png) ![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-3.png) 
 
 This can be tested formally by adding an interaction term between player order and strategy (results omitted for space):
 
@@ -149,5 +149,3 @@ summary(regress)
 - The `variant.R` model, in which a stealee **must** open (no chains of steals) yields almost identical results.
 - It would be interesting to test a model in which players are able to estimate each other's preferences and adjust their strategy accordingly.
 - It would also be interesting to test each strategy against the naive strategy (i.e. every player except one plays strategy #1).
-
-
