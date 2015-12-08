@@ -3,7 +3,7 @@ output: html_document
 ---
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-```{r, echo = FALSE}
+```{r, echo = FALSE,message=FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -18,7 +18,7 @@ What is the best strategy for a Yankee Swap (also known as a white elephant exch
 
 For a story and video based on this analysis, see [here](http://fivethirtyeight.com).
 
-**Note: There are two versions of this repo:
+**Note:** There are two versions of this repo:
 
 - The version at <https://github.com/fivethirtyeight/> is a static rep reflecting the model at the time of publication.
 - The version at <https://github.com/BenCasselman> is an active repo and will reflect any later updates or additions.
@@ -152,8 +152,9 @@ cumulative %>%
 ```
 
 This can be tested formally by adding an interaction term between player order and strategy (results omitted for space):
-```{r}
+```{r,eval=FALSE}
 regress <- lm(result ~ factor(strategy) * factor(player.no),data=cumulative)
+summary(regress)
 ```
 
 ##### Other notes & future analysis
