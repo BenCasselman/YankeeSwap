@@ -1,10 +1,3 @@
----
-output: html_document
----
-<!-- README.md is generated from README.Rmd. Please edit that file -->
-
-
-
 # The Game Theory of the Yankee Swap
 
 ### Introduction
@@ -19,7 +12,7 @@ For a story and video based on this analysis, see [here](http://fivethirtyeight.
 
 This model is inspired partly by [this approach](https://github.com/analyzestuff/posts/blob/master/white_elephant/white_elephant.R) by Max Ghenis. Thanks also to Max for providing some helpful coding suggestions.
 
-Comments/questions/feedback? email ben.casselman [at] fivethirtyeight.com
+Comments/questions/feedback? [email me](mailto:ben.casselman@fivethirtyeight.com)
 
 ### Rules and Assumptions
 There are endless variations of the game, some of which have significant strategic implications. The optimum strategy also depends heavily on underlying assumptions about how different players value each gift, and how well they can estimate those values.
