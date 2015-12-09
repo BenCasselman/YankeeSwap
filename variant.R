@@ -32,45 +32,45 @@ require(tidyr)
 require(ggplot2)
 set.seed(538)
 
-# INITIAL SETUP OF FUNCTIONS -- All identical to standard approach.
+# INITIAL SETUP OF FUNCTIONS
 
-strat1 <- function(){
-  prob <- nrow(stealable)/available
-  runif(1)<prob
+strat1 <- function() {
+  prob <- nrow(stealable) / available
+  runif(1) < prob
 }
 
-strat5 <- function(){
-  w <- values[c(1,player+1)]
+strat5 <- function() {
+  w <- values[c(1, player+1)]
   names(w)[2] <- "specific"
   w <- gifts %>%
-    filter(opened==1) %>%
-    left_join(w,by=c("gift.no"="gifts"))
+    filter(opened == 1) %>%
+    left_join(w, by=c("gift.no" = "gifts"))
   expected <- w %>%
     summarize(mean(specific)) %>%
     as.numeric()
   return(max(stealable$specific) > expected)
 }
 
-strat6 <- function(){
-  w <- values[c(1,player+1)]
+strat6 <- function() {
+  w <- values[c(1, player+1)]
   names(w)[2] <- "specific"
   w <- gifts %>%
-    filter(opened==1) %>%
-    left_join(w,by=c("gift.no"="gifts"))
+    filter(opened == 1) %>%
+    left_join(w,by = c("gift.no" = "gifts"))
   expected <- w %>%
     summarize(mean(specific)) %>%
     as.numeric()
   locks <- stealable %>%
-    filter(steals==max.steals-1)
+    filter(steals == max.steals - 1)
   return(max(locks$specific) > expected) 
 }
 
-strat7 <- function(){
-  w <- values[c(1,player+1)]
+strat7 <- function() {
+  w <- values[c(1, player+1)]
   names(w)[2] <- "specific"
   w <- gifts %>%
-    filter(opened==1 | brought==player) %>%
-    left_join(w,by=c("gift.no"="gifts"))
+    filter(opened == 1 | brought == player) %>%
+    left_join(w,by = c("gift.no" = "gifts"))
   expected <- w %>%
     summarize(mean(specific)) %>%
     as.numeric()
@@ -79,18 +79,19 @@ strat7 <- function(){
 
 # Strategy 8 based off Ghosh-Mahdian
 # Paper: http://www.arpitaghosh.com/papers/gift1.pdf
-theta <- data.frame(player.no=n.play:1)
+theta <- data.frame(player.no = n.play:1)
 theta$theta[1] <- 0.5
-for (x in 1:(n.play-1)){
-  theta$theta[x+1] <- theta$theta[x]-((theta$theta[x])^2)/2}
+for (x in 1:(n.play - 1)){
+  theta$theta[x+1] <- theta$theta[x] - ((theta$theta[x])^2) / 2
+}
 
-strat8 <- function(){
-  if (max(stealable$specific)>=theta$theta[which(theta$player.no==player)]) TRUE
+strat8 <- function() {
+  if (max(stealable$specific) >= theta$theta[which(theta$player.no == player)]) TRUE
   else FALSE
 }
 
 
-will.steal <- function(p) {
+will_steal <- function(p) {
   return(switch(p,
                 strat1(),  # 1
                 TRUE,  # 2
@@ -101,6 +102,23 @@ will.steal <- function(p) {
                 strat7(),  # 7
                 strat8() # 8
   ))
+}
+
+# Function for selecting which gift to steal.
+# For most strategies, it's just to take highest-value available gift.
+chooser <- function(p) {
+  # If strategy 3 and more than one stealable gift, get 2nd best gift.
+  if (p == 3 && nrow(stealable) > 1) {
+    return(stealable[order(stealable$specific, decreasing = T), "gift.no"][2])
+  }
+  # If strategy 1, 2, 5, 7, or 3 (and now only one gift), steal best gift.
+  if (p %in% c(1, 2, 5, 7,8, 3)) {
+    return(stealable[order(stealable$specific, decreasing = T), "gift.no"][1])
+  }
+  if (p == 6) {
+    locks <- stealable %>% filter(steals == 2)
+    return(locks$gift.no[which(locks$specific == max(locks$specific))])
+  }
 }
 
 ################################################################
@@ -115,11 +133,11 @@ will.steal <- function(p) {
 n.play <- 15 # Number of players
 max.steals <- 3 # Maximum number of times a gift can be stolen
 v <- .1 # Variance in tastes
-iterations <- 500 # How many times to play?
+iterations <- 5000 # How many times to play?
 extra <- FALSE # Does first person get an extra shot at the end?
 
 
-result_v2 <- data.frame(player.no=1:n.play)
+result_v2 <- data.frame(player.no = 1:n.play)
 cumulative_v2 <- data.frame()
 
 # MEGA LOOP
@@ -127,168 +145,185 @@ cumulative_v2 <- data.frame()
 # Only thing that stays constant is the baseline rules.
 
 for (games in 1:iterations){
-  print(paste0("GAME ",games))
+  print(paste0("GAME ", games))
   
   # Set up gifts
-  gifts <- data.frame(gift.no = 1:n.play,brought=sample(1:n.play,replace=F),steals=rep(0,times=n.play),opened=rep(0,times=n.play),underlying.value=runif(n.play))
+  gifts <- data.frame(gift.no = 1:n.play,
+                      brought = sample(1:n.play, replace = F),
+                      steals = rep(0, times = n.play),
+                      opened = rep(0, times = n.play),
+                      underlying.value = runif(n.play))
   
   # Set up players
   # Each player has a strategy, chosen at random
-  players <- data.frame(player.no=1:n.play,strategy=rep(sample(1:7,n.play,replace=T)))
+  players <- data.frame(player.no = 1:n.play, strategy = rep(sample(1:8, n.play, replace=T)))
   
   # Set up matrix of player-specific gift values
-  values <- data.frame(gifts=1:n.play)
+  values <- data.frame(gifts = 1:n.play)
   for (i in 1:n.play){
-    values[c(i+1)] <- sapply(gifts$underlying.value,function(x)x*runif(1,min=1-v,max=1+v))
-    names(values)[i+1] <- paste0("player_",i)
+    values[c(i + 1)] <- sapply(gifts$underlying.value, function(x) x * runif(1, min = 1 - v, max = 1 + v))
+    names(values)[i + 1] <- paste0("player_", i)
   }
   
   # Game play
-  who.has <- players
-  who.has$gift <- NA
+  who_has <- players
+  who_has$gift <- NA
   #game <- data.frame(player.no=1:n.play) # This will track the full game. Switched off when running multiple iterations.
   total.rounds <- 0
   #   last.stolen <- 0 NOT AN ISSUE HERE
   last.round <- 0
   
-  for (i in 1:n.play){
+  for (i in 1:n.play) {
     player <- i
     
     # Internal loop for swapping -- NOT NEEDED for this version
     
     # Starting situation
-    strategy <- players$strategy[which(players$player.no==player)]
+    strategy <- players$strategy[which(players$player.no == player)]
     
     unopened <- gifts %>%
-      filter(opened==0) %>%
+      filter(opened == 0) %>%
       select(gift.no)
-    #       if (nrow(unopened)==0) break
     
     # Need df of stealable gifts, with value to potential stealer attached
-    stealable <- values[c(1,player+1)]
+    stealable <- values[c(1, player + 1)]
     names(stealable)[2] <- "specific"
     stealable <- gifts %>%
-      filter(opened==1,steals<max.steals) %>%
-      left_join(stealable,by=c("gift.no"="gifts"))
+      filter(opened == 1, steals < max.steals) %>%
+      left_join(stealable, by = c("gift.no" = "gifts"))
     
-    available <- nrow(stealable)+nrow(unopened)
+    available <- nrow(stealable) + nrow(unopened)
     
-    if (nrow(stealable)==0) {steal <- FALSE} # if there's nothing to steal, then open
-    else steal <- will.steal(strategy)  
+    if (nrow(stealable) == 0) {
+      steal <- FALSE # if there's nothing to steal, then open
+      } else steal <- will_steal(strategy)  
     
     if (steal){
       # If player steals
       choice <- chooser(strategy)  # This is the gift they steal
-      newplayer <- who.has$player.no[which(who.has$gift==choice)] # player stolen from becomes new player
-      who.has$gift[which(who.has$player.no==player)] <- choice # assign gift to stealer
-      who.has$gift[which(who.has$player.no==newplayer)] <- NA
-      gifts$steals[which(gifts$gift.no==choice)] <- gifts$steals[which(gifts$gift.no==choice)] +1 # add to number of times gift has been stolen
-      print(paste0("Player ",player,", following strategy #",strategy,", steals gift #",choice," from Player ",newplayer))
+      newplayer <- who_has$player.no[which(who_has$gift == choice)] # player stolen from becomes new player
+      who_has$gift[which(who_has$player.no == player)] <- choice # assign gift to stealer
+      who_has$gift[which(who_has$player.no == newplayer)] <- NA
+      gifts$steals[which(gifts$gift.no == choice)] <- 
+        gifts$steals[which(gifts$gift.no == choice)] + 1 # add to number of times gift has been stolen
+      
+      # This will print results of each turn. Helpful for debugging but unnecessary.
+      print(paste0("Player ", player, ", following strategy #", strategy, ", steals gift #", choice," from Player ", newplayer))
       player <- newplayer
       
       # Now player opens
       
       # Repeat this from above
-      strategy <- players$strategy[which(players$player.no==player)]
+      strategy <- players$strategy[which(players$player.no == player)]
       unopened <- gifts %>%
-        filter(opened==0) %>%
+        filter(opened == 0) %>%
         select(gift.no)
       
       # Need df of stealable gifts, with value to potential stealer attached
-      stealable <- values[c(1,player+1)]
+      stealable <- values[c(1, player + 1)]
       names(stealable)[2] <- "specific"
       stealable <- gifts %>%
-        filter(opened==1,steals<max.steals) %>%
-        left_join(stealable,by=c("gift.no"="gifts"))
+        filter(opened == 1, steals < max.steals) %>%
+        left_join(stealable,by = c("gift.no" = "gifts"))
       
       choice <- unopened$gift.no[1] # takes first available gift
-      gifts$opened[gifts$gift.no==choice] <- 1 # gift has now been opened
-      who.has$gift[who.has$player.no==player] <- choice # assign gift
-      print(paste0("Player ",player,", following strategy #",strategy,", opens gift #",choice))
+      gifts$opened[gifts$gift.no == choice] <- 1 # gift has now been opened
+      who_has$gift[who_has$player.no == player] <- choice # assign gift
       
-      #game[c(total.rounds+1)] <- who.has$gift
+      # This will print results of each turn. Helpful for debugging but unnecessary.
+      print(paste0("Player ", player, ", following strategy #", strategy, ", opens gift #", choice))
+      
+      #game[c(total.rounds+1)] <- who_has$gift
       #names(game)[total.rounds+1] <- paste0("round_",total.rounds)        
-    }
-    else {
+    } else {
       # if player opens
       choice <- unopened$gift.no[1] # takes first available gift
-      gifts$opened[gifts$gift.no==choice] <- 1 # gift has now been opened
-      who.has$gift[who.has$player.no==player] <- choice # assign gift
-      total.rounds <- total.rounds+1
-      print(paste0("Player ",player,", following strategy #",strategy,", opens gift #",choice))
+      gifts$opened[gifts$gift.no == choice] <- 1 # gift has now been opened
+      who_has$gift[who_has$player.no == player] <- choice # assign gift
+      total.rounds <- total.rounds + 1
+      print(paste0("Player ", player, ", following strategy #", strategy, ", opens gift #", choice))
       
-      #game[c(total.rounds+1)] <- who.has$gift
+      #game[c(total.rounds+1)] <- who_has$gift
       #names(game)[total.rounds+1] <- paste0("round_",total.rounds)
     }
     
     
     # Extra round
     # Key difference is it's a SWAP
-    if (last.round==1){
+    if (last.round == 1){
       player <- 1
-      swap <- who.has$gift[1] # What is Player 1's CURRENT gift
+      swap <- who_has$gift[1] # What is Player 1's CURRENT gift
       
-      stealable <- values[c(1,player+1)]
+      stealable <- values[c(1, player + 1)]
       names(stealable)[2] <- "specific"
       stealable <- gifts %>%
-        filter(opened==1,steals<max.steals) %>% # No "last stolen" here since it's a separate "turn"
-        left_join(stealable,by=c("gift.no"="gifts"))
+        filter(opened == 1, steals < max.steals) %>% # No "last stolen" here since it's a separate "turn"
+        left_join(stealable, by = c("gift.no" = "gifts"))
       
       choice <- chooser(1)  # This is the gift they steal. It will ALWAYS be the best available gift.
       
-      newplayer <- who.has$player.no[which(who.has$gift==choice)] # player stolen from becomes new player
-      who.has$gift[which(who.has$player.no==player)] <- choice # assign gift to stealer
-      who.has$gift[which(who.has$player.no==newplayer)] <- swap # assign swap to stealee      
+      newplayer <- who_has$player.no[which(who_has$gift == choice)] # player stolen from becomes new player
+      who_has$gift[which(who_has$player.no == player)] <- choice # assign gift to stealer
+      who_has$gift[which(who_has$player.no == newplayer)] <- swap # assign swap to stealee      
       
       # Still add to these counts for tracking purposes
-      gifts$steals[which(gifts$gift.no==choice)] <- gifts$steals[which(gifts$gift.no==choice)] +1 # add to number of times gift has been stolen
-      print(paste0("Player 1 steals gift #",choice," from Player ",newplayer,". Player ",newplayer," gets gift #",swap," in return."))
-      total.rounds <- total.rounds+1
+      gifts$steals[which(gifts$gift.no == choice)] <- gifts$steals[which(gifts$gift.no == choice)] + 1 # add to number of times gift has been stolen
+      print(paste0("Player 1 steals gift #", choice, " from Player ", newplayer, ". Player ", newplayer, " gets gift #", swap, " in return."))
+      total.rounds <- total.rounds + 1
       
     }
   }
   
   # Track results from all games
-  who.has$result <- mapply(function(x)values[who.has$gift[x],x+1],who.has$player.no)
-  who.has <- gifts %>%
-    select(gift.no,underlying.value) %>%
-    left_join(who.has,.,by=c("gift"="gift.no"))
-  who.has$game <- games
-  cumulative_v2 <- rbind(cumulative,who.has) # keeps cumulative list of all games and results
+  who_has$result <- mapply(function(x) values[who_has$gift[x], x + 1], who_has$player.no)
+  who_has <- gifts %>%
+    select(gift.no, underlying.value) %>%
+    left_join(who_has,.,by = c("gift" = "gift.no"))
+  who_has$game <- games
+  cumulative_v2 <- rbind(cumulative_v2, who_has) # keeps cumulative list of all games and results
   
 }
 
+# save(cumulative_v2, result_v2, file="alt_result_v2s.RData")
+
+#############################################################################
+#
+# END MODEL
+# BEGIN ANALYSIS
+
+# Results by strategy
 cumulative_v2 %>%
   group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
+  summarize(score = mean(result)) %>%
+  ggplot(., aes(factor(strategy), score)) + geom_bar(stat = "identity") +
   ggtitle("Value by Strategy")
 
+# Results by player order
 cumulative_v2 %>%
   group_by(player.no) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(player.no,score))+geom_line()+
+  summarize(score = mean(result)) %>%
+  ggplot(., aes(player.no, score)) + geom_line()+
   ggtitle("Value by order of draw")
 
+# Results by strategy and player order
 cumulative_v2 %>%
-  filter(player.no<6) %>%
+  filter(player.no < 6) %>% # Early drawers
   group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
+  summarize(score = mean(result)) %>%
+  ggplot(., aes(factor(strategy), score)) + geom_bar(stat = "identity") +
   ggtitle("Value by strategy for early drawers")
 cumulative_v2 %>%
-  filter(player.no>=6,player.no<11) %>%
+  filter(player.no >= 6 , player.no < 11) %>% # Middle drawres
   group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
+  summarize(score = mean(result)) %>%
+  ggplot(., aes(factor(strategy), score)) + geom_bar(stat = "identity") +
   ggtitle("Value by strategy for middle drawers")
 cumulative_v2 %>%
-  filter(player.no>=11) %>%
+  filter(player.no >= 11) %>% # Late drawers
   group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
+  summarize(score = mean(result)) %>%
+  ggplot(., aes(factor(strategy), score)) + geom_bar(stat = "identity") +
   ggtitle("Value by strategy for late drawers")
 
-# save(cumulative_v2,result_v2,file="initial_result_v2s.RData")
-
-summary(lm(result ~ factor(strategy) + player.no,data=cumulative_v2))
+# Regressions
+summary(lm(result ~ factor(strategy) + player.no, data = cumulative_v2))

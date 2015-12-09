@@ -70,14 +70,12 @@ The model randomly assigns:
 - A player-specific value for each player-gift combo, using the following formula:
 
 ```r
-  values <- data.frame(gifts=1:n.play)
+  values <- data.frame(gifts = 1:n.play)
   for (i in 1:n.play){
-    values[c(i+1)] <- sapply(gifts$underlying.value,function(x)x*runif(1,min=1-v,max=1+v))
-    names(values)[i+1] <- paste0("player_",i)
+    values[c(i + 1)] <- sapply(gifts$underlying.value, function(x) x * runif(1, min= 1 - v, max = 1 + v))
+    names(values)[i + 1] <- paste0("player_", i)
   }
 ```
-
-
 
 
 ### Analysis
@@ -102,7 +100,7 @@ Strategy matters! Specifically:
 We can see this using a regression analysis, controlling for player order:
 
 ```r
-regress <- lm(result ~ factor(strategy) + player.no,data=cumulative)
+regress <- lm(result ~ factor(strategy) + player.no, data = cumulative)
 summary(regress)
 #> 
 #> Call:
@@ -138,14 +136,15 @@ Strategy is less important earlier in the game. Here are the same strategy-payof
 This can be tested formally by adding an interaction term between player order and strategy (results omitted for space):
 
 ```r
-regress <- lm(result ~ factor(strategy) * factor(player.no),data=cumulative)
+regress <- lm(result ~ factor(strategy) * factor(player.no), data = cumulative)
 summary(regress)
 ```
+
 
 ##### Other notes & future analysis
 - Changing variance of preferences affects shape but not overall takeaway. The greater the variation,the more important both strategy and player order become.
 - Allowing gifts to be swapped more times makes the game take forever but doesn't change overall outcomes. (Allowing unlimited swaps can turn into a literally unending game if no other stop-points are built in.)
 - The `extra <- TRUE` option, in which the first player gets an extra turn, gives a massive advantage to going first. It's actually much *less* fair than the default rules.
-- The `variant.R` model, in which a stealee **must** open (no chains of steals) yields almost identical results.
+- Choice of strategy matters much less in the `variant.R` model, in which a stealee **must** open (no chains of steals). The relative ranking of the strategies changes little, however, with the exception that strategy #3 (steal the 2d best gift) performs far better under the alternative rules.
 - It would be interesting to test a model in which players are able to estimate each other's preferences and adjust their strategy accordingly.
 - It would also be interesting to test each strategy against the naive strategy (i.e. every player except one plays strategy #1).

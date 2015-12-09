@@ -74,14 +74,12 @@ The model randomly assigns:
 - An underlying value (between 0 and 1, evenly distributed) to each gift;
 - A player-specific value for each player-gift combo, using the following formula:
 ```{r}
-  values <- data.frame(gifts=1:n.play)
+  values <- data.frame(gifts = 1:n.play)
   for (i in 1:n.play){
-    values[c(i+1)] <- sapply(gifts$underlying.value,function(x)x*runif(1,min=1-v,max=1+v))
-    names(values)[i+1] <- paste0("player_",i)
+    values[c(i + 1)] <- sapply(gifts$underlying.value, function(x) x * runif(1, min= 1 - v, max = 1 + v))
+    names(values)[i + 1] <- paste0("player_", i)
   }
 ```
-
-
 
 
 ### Analysis
@@ -90,13 +88,13 @@ A few clear takeaways quickly emerge. (Charts are based on 10,000 iterations usi
 ##### Player order
 There is a big advantage to going later, and a particularly large advantage to going last. (Going first also seems to be slightly better than going second.)
 
-```{r, echo=FALSE,message=FALSE}
+```{r, echo = FALSE, message = FALSE}
 require(dplyr)
 require(ggplot2)
 cumulative %>%
   group_by(player.no) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(player.no,score))+geom_line()+
+  summarize(score = mean(result)) %>%
+  ggplot(.,aes(player.no,score)) + geom_line() +
   ggtitle("Value by order of draw") + xlab("Player position") + ylab("Score")
 ```
 
@@ -109,58 +107,59 @@ Strategy matters! Specifically:
 - The simple "always steal" does surprisingly well;
 - There is little difference in outcome between models 5 and 7.
 
-```{r, echo=FALSE,message=FALSE}
+```{r, echo = FALSE, message = FALSE}
 require(dplyr)
 require(ggplot2)
 load("results_10k_iterations.RData")
 cumulative %>%
   group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
+  summarize(score = mean(result)) %>%
+  ggplot(., aes(factor(strategy), score)) + geom_bar(stat = "identity") +
   ggtitle("Value by Strategy") + xlab("Strategy") + ylab("Score")
 ```
 
 We can see this using a regression analysis, controlling for player order:
-```{r,message=FALSE}
-regress <- lm(result ~ factor(strategy) + player.no,data=cumulative)
+```{r, message = FALSE}
+regress <- lm(result ~ factor(strategy) + player.no, data = cumulative)
 summary(regress)
 ```
 
 Strategy is less important earlier in the game. Here are the same strategy-payoff charts for early (players 1-5), middle (6-10) and late (11-15) players.
 
-```{r, echo=FALSE,message=FALSE}
+```{r, echo = FALSE, message = FALSE}
 require(dplyr)
 require(ggplot2)
 cumulative %>%
-  filter(player.no<6) %>%
+  filter(player.no < 6) %>% # Early drawers
   group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
+  summarize(score = mean(result)) %>%
+  ggplot(., aes(factor(strategy), score))+geom_bar(stat = "identity")+
   ggtitle("Value by strategy for early drawers") + xlab("Strategy") + ylab("Score")
 cumulative %>%
-  filter(player.no>=6,player.no<11) %>%
+  filter(player.no >= 6,player.no < 11) %>% # Middle drawers
   group_by(strategy) %>%
-  summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
+  summarize(score = mean(result)) %>%
+  ggplot(., aes(factor(strategy), score)) + geom_bar(stat = "identity")+
   ggtitle("Value by strategy for middle drawers") + xlab("Strategy") + ylab("Score")
 cumulative %>%
-  filter(player.no>=11) %>%
+  filter(player.no >= 11) %>% # Late drawers
   group_by(strategy) %>%
   summarize(score=mean(result)) %>%
-  ggplot(.,aes(factor(strategy),score))+geom_bar(stat="identity")+
+  ggplot(., aes(factor(strategy),score)) + geom_bar(stat = "identity")+
   ggtitle("Value by strategy for late drawers") + xlab("Strategy") + ylab("Score")
 ```
 
 This can be tested formally by adding an interaction term between player order and strategy (results omitted for space):
-```{r,eval=FALSE}
-regress <- lm(result ~ factor(strategy) * factor(player.no),data=cumulative)
+```{r,eval = FALSE}
+regress <- lm(result ~ factor(strategy) * factor(player.no), data = cumulative)
 summary(regress)
 ```
+
 
 ##### Other notes & future analysis
 - Changing variance of preferences affects shape but not overall takeaway. The greater the variation,the more important both strategy and player order become.
 - Allowing gifts to be swapped more times makes the game take forever but doesn't change overall outcomes. (Allowing unlimited swaps can turn into a literally unending game if no other stop-points are built in.)
 - The `extra <- TRUE` option, in which the first player gets an extra turn, gives a massive advantage to going first. It's actually much *less* fair than the default rules.
-- The `variant.R` model, in which a stealee **must** open (no chains of steals) yields almost identical results.
+- Choice of strategy matters much less in the `variant.R` model, in which a stealee **must** open (no chains of steals). The relative ranking of the strategies changes little, however, with the exception that strategy #3 (steal the 2d best gift) performs far better under the alternative rules.
 - It would be interesting to test a model in which players are able to estimate each other's preferences and adjust their strategy accordingly.
 - It would also be interesting to test each strategy against the naive strategy (i.e. every player except one plays strategy #1).
