@@ -1,9 +1,4 @@
----
-output: html_document
----
 <!-- README.md is generated from README.Rmd. Please edit that file -->
-
-
 
 # The Game Theory of the Yankee Swap
 
