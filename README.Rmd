@@ -7,8 +7,7 @@ output: html_document
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
-  fig.path = "README-",
-  target = "README.md"
+  fig.path = "README-"
 )
 ```
 
