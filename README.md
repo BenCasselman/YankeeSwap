@@ -69,7 +69,7 @@ A few clear takeaways quickly emerge. (Charts are based on 10,000 iterations usi
 ##### Player order
 There is a big advantage to going later, and a particularly big advantage to going last. (Going first also seems to be slightly better than going second.)
 
-![plot of chunk unnamed-chunk-4](README-unnamed-chunk-4-1.png) 
+![plot of chart-4](README-chart-4-1.png) 
 
 ##### Strategy
 Strategy matters! Specifically:
@@ -80,7 +80,7 @@ Strategy matters! Specifically:
 - The simple "always steal" does surprisingly well;
 - There is little difference in outcome between models 5 and 7.
 
-![plot of chunk unnamed-chunk-5](README-unnamed-chunk-5-1.png) 
+![plot of chart-5](README-chart-5-1.png) 
 
 We can see this using a regression analysis, controlling for player order:
 
@@ -116,7 +116,7 @@ summary(regress)
 
 Strategy is less important earlier in the game. Here are the same strategy-payoff charts for early (players 1-5), middle (6-10) and late (11-15) players.
 
-![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-1.png) ![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-2.png) ![plot of chunk unnamed-chunk-7](README-unnamed-chunk-7-3.png) 
+![plot of chart-7](README-chart-7-1.png) ![plot of chart-7](README-chart-7-2.png) ![plot of chart-7](README-chart-7-3.png) 
 
 This can be tested formally by adding an interaction term between player order and strategy (results omitted for space):
 
