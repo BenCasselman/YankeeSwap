@@ -127,7 +127,7 @@ summary(regress)
 
 
 ##### Other notes & future analysis
-- Changing variation of preferences affects shape but not overall conclusions. The greater the variation,the more important both strategy and player order become.
+- Changing variation of preferences affects shape but not overall conclusions. The greater the variation, the more important both strategy and player order become.
 - Allowing gifts to be swapped more times makes the game take forever but doesn't change overall outcomes. (Allowing unlimited swaps can turn into a literally unending game if no other stop-points are built in.)
 - The `extra <- TRUE` option, in which the first player gets an extra turn, gives a massive advantage to going first. It's actually much *less* fair than the default rules.
 - Choice of strategy matters much less in the `variant.R` model, in which a stealee **must** open (no chains of steals). The relative ranking of the strategies changes little, however, with the exception that strategy #3 (steal the second best gift) performs far better under the alternative rules.
