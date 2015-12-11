@@ -3,7 +3,7 @@
 ### Introduction
 What is the best strategy for a Yankee Swap (also known as a white elephant exchange)? This model attempts to use game theory to find the answer.
 
-For a story and video based on this analysis, see [here](http://fivethirtyeight.com).
+For a story and video based on this analysis, see [here](http://fivethirtyeight.com/features/white-elephant-yankee-swap-game-theory).
 
 This model is inspired partly by [this approach](https://github.com/analyzestuff/posts/blob/master/white_elephant/white_elephant.R) by Max Ghenis. Thanks also to Max for providing some helpful coding suggestions.
 
